@@ -1,11 +1,15 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const AdminKomik = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+
   const { data: komikList } = useQuery({
     queryKey: ["admin-komik-list"],
     queryFn: async () => {
@@ -18,6 +22,10 @@ const AdminKomik = () => {
       return data;
     },
   });
+
+  const filteredKomikList = komikList?.filter((komik) =>
+    komik.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div>
@@ -32,8 +40,20 @@ const AdminKomik = () => {
       </div>
 
       <Card className="p-6">
+        <div className="mb-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cari komik berdasarkan judul..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+        
         <div className="space-y-4">
-          {komikList?.map((komik) => (
+          {filteredKomikList?.map((komik) => (
             <div key={komik.id} className="flex items-center gap-4 p-4 border border-border rounded-lg">
               <div className="w-12 h-16 rounded overflow-hidden flex-shrink-0">
                 {komik.cover_url ? (

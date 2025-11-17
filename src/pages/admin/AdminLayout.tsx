@@ -69,7 +69,8 @@ const AdminLayout = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/");
+    toast.success("Berhasil logout");
+    navigate("/", { replace: true });
   };
 
   const navItems = [

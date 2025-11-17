@@ -10,12 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
+import { ChapterImagesUpload } from "@/components/ChapterImagesUpload";
 
 interface ChapterFormData {
   komik_id: string;
   chapter_number: string;
   title: string;
-  images: string;
 }
 
 const AdminChapterForm = () => {
@@ -24,6 +24,11 @@ const AdminChapterForm = () => {
   const queryClient = useQueryClient();
   const isEdit = !!id;
   const [selectedKomikId, setSelectedKomikId] = useState("");
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+
+  // Get komikId from URL params if adding new chapter from comic page
+  const searchParams = new URLSearchParams(window.location.search);
+  const preselectedKomikId = searchParams.get('komikId');
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<ChapterFormData>();
 
@@ -70,6 +75,13 @@ const AdminChapterForm = () => {
   });
 
   useEffect(() => {
+    if (preselectedKomikId && !isEdit) {
+      setSelectedKomikId(preselectedKomikId);
+      setValue("komik_id", preselectedKomikId);
+    }
+  }, [preselectedKomikId, isEdit, setValue]);
+
+  useEffect(() => {
     if (chapter) {
       setValue("komik_id", chapter.komik_id);
       setSelectedKomikId(chapter.komik_id);
@@ -77,8 +89,8 @@ const AdminChapterForm = () => {
       setValue("title", chapter.title || "");
     }
     if (chapterImages) {
-      const imageUrls = chapterImages.map(img => img.image_url).join("\n");
-      setValue("images", imageUrls);
+      const imageUrls = chapterImages.map(img => img.image_url);
+      setUploadedImages(imageUrls);
     }
   }, [chapter, chapterImages, setValue]);
 
@@ -115,8 +127,7 @@ const AdminChapterForm = () => {
       }
 
       // Insert images
-      const imageUrls = data.images.split("\n").map(url => url.trim()).filter(Boolean);
-      const imageData = imageUrls.map((url, index) => ({
+      const imageData = uploadedImages.map((url, index) => ({
         chapter_id: chapterId,
         image_url: url,
         order_index: index,
@@ -142,6 +153,10 @@ const AdminChapterForm = () => {
   const onSubmit = (data: ChapterFormData) => {
     if (!selectedKomikId) {
       toast.error("Pilih komik terlebih dahulu");
+      return;
+    }
+    if (uploadedImages.length === 0) {
+      toast.error("Upload minimal 1 gambar chapter");
       return;
     }
     saveMutation.mutate(data);
@@ -195,15 +210,21 @@ const AdminChapterForm = () => {
             />
           </div>
 
-          <div>
-            <Label htmlFor="images">URL Gambar (satu per baris)</Label>
-            <textarea
-              id="images"
-              {...register("images")}
-              className="flex min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
+          {selectedKomikId && (
+            <ChapterImagesUpload
+              komikId={selectedKomikId}
+              chapterId={id || "temp"}
+              onUploadSuccess={(urls) => setUploadedImages(urls)}
             />
-          </div>
+          )}
+
+          {uploadedImages.length > 0 && (
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="text-sm font-medium mb-2">
+                {uploadedImages.length} gambar siap disimpan
+              </p>
+            </div>
+          )}
 
           <div className="flex gap-4">
             <Button type="submit" disabled={saveMutation.isPending}>

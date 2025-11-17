@@ -57,30 +57,36 @@ export async function uploadComicCover(
 export async function uploadChapterImages(
   files: File[],
   komikId: string,
-  chapterId: string
+  chapterId: string,
+  onProgress?: (current: number, total: number) => void
 ): Promise<string[]> {
   try {
     // Validate files
     for (const file of files) {
       if (!file.type.startsWith('image/')) {
-        throw new Error(`${file.name} is not an image`);
+        throw new Error(`${file.name} bukan file gambar`);
       }
-      if (file.size > 15 * 1024 * 1024) {
-        throw new Error(`${file.name} exceeds 15MB limit`);
+      if (file.size > 20 * 1024 * 1024) {
+        throw new Error(`${file.name} melebihi batas 20MB`);
       }
     }
 
-    // Upload all files in parallel
-    const uploadPromises = files.map(async (file, index) => {
+    // Upload all files in parallel with progress tracking
+    const urls: string[] = [];
+    let completed = 0;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const fileExt = file.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      const filePath = `${komikId}/${chapterId}/${String(index + 1).padStart(3, '0')}_${fileName}`;
+      const filePath = `${komikId}/${chapterId}/${String(i + 1).padStart(3, '0')}_${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('chapters')
         .upload(filePath, file, {
           upsert: true,
           contentType: file.type,
+          cacheControl: '3600',
         });
 
       if (uploadError) throw uploadError;
@@ -90,10 +96,15 @@ export async function uploadChapterImages(
         data: { publicUrl },
       } = supabase.storage.from('chapters').getPublicUrl(filePath);
 
-      return publicUrl;
-    });
+      urls.push(publicUrl);
+      
+      completed++;
+      if (onProgress) {
+        onProgress(completed, files.length);
+      }
+    }
 
-    return Promise.all(uploadPromises);
+    return urls;
   } catch (error) {
     console.error('Error uploading chapter images:', error);
     throw error;

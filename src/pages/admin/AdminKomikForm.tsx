@@ -151,11 +151,22 @@ const AdminKomikForm = () => {
 
   return (
     <div>
-      <div className="flex items-center gap-4 mb-6">
-        <Button type="button" variant="ghost" size="icon" onClick={() => navigate("/admin/komik")}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-3xl font-bold">{id ? "Edit Comic" : "Add Comic"}</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button type="button" variant="ghost" size="icon" onClick={() => navigate("/admin/komik")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-3xl font-bold">{id ? "Edit Comic" : "Add Comic"}</h1>
+        </div>
+        {id && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => navigate(`/admin/chapters/tambah?komikId=${id}`)}
+          >
+            + Upload Chapter Baru
+          </Button>
+        )}
       </div>
 
       <Form {...form}>

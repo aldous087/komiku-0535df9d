@@ -39,14 +39,22 @@ export const ChapterImagesUpload = ({
       try {
         // Sort files by name
         const sortedFiles = [...acceptedFiles].sort((a, b) =>
-          a.name.localeCompare(b.name)
+          a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
         );
 
-        // Upload with progress
+        // Upload with progress tracking
+        const totalFiles = sortedFiles.length;
+        let completed = 0;
+
         const urls = await uploadChapterImages(
           sortedFiles,
           komikId,
-          chapterId
+          chapterId,
+          (current, total) => {
+            completed = current;
+            const progressPercent = Math.round((current / total) * 100);
+            setProgress(progressPercent);
+          }
         );
 
         setProgress(100);
@@ -54,16 +62,17 @@ export const ChapterImagesUpload = ({
 
         toast({
           title: "Berhasil",
-          description: `${urls.length} gambar berhasil diupload`,
+          description: `${urls.length} gambar HD berhasil diupload`,
         });
 
         // Clean up preview URLs
         previewUrls.forEach((url) => URL.revokeObjectURL(url));
+        setPreviews([]);
       } catch (error) {
         console.error("Upload error:", error);
         toast({
           title: "Error",
-          description: "Gagal upload gambar chapter",
+          description: error instanceof Error ? error.message : "Gagal upload gambar chapter",
           variant: "destructive",
         });
       } finally {
@@ -81,7 +90,7 @@ export const ChapterImagesUpload = ({
       "image/webp": [".webp"],
     },
     multiple: true,
-    maxSize: 15728640, // 15MB per file
+    maxSize: 20971520, // 20MB per file
   });
 
   return (
@@ -92,6 +101,7 @@ export const ChapterImagesUpload = ({
 
       <div
         {...getRootProps()}
+        id="chapter-images-dropzone"
         className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
           isDragActive
             ? "border-primary bg-primary/5"
@@ -110,13 +120,13 @@ export const ChapterImagesUpload = ({
               ? "Mengupload..."
               : isDragActive
               ? "Drop gambar di sini..."
-              : "Drag & drop gambar chapter (50-300 files)"}
+              : "Drag & drop gambar chapter (bulk upload)"}
           </p>
           <p className="text-xs text-muted-foreground">
-            JPG, PNG, WEBP (Max 15MB per file)
+            JPG, PNG, WEBP (Max 20MB per file, kualitas HD)
           </p>
           <p className="text-xs text-muted-foreground">
-            Gambar akan diurutkan otomatis: 001.jpg, 002.jpg, dst.
+            Gambar akan diurutkan otomatis berdasarkan nama file
           </p>
         </div>
       </div>
@@ -155,10 +165,10 @@ export const ChapterImagesUpload = ({
       <Button
         variant="outline"
         className="w-full mt-4"
-        disabled={uploading}
-        onClick={() => {}}
+        disabled={uploading || previews.length === 0}
+        onClick={() => document.getElementById('chapter-images-dropzone')?.click()}
       >
-        Upload Gambar Chapter
+        {uploading ? "Mengupload..." : previews.length > 0 ? `${previews.length} Gambar Siap Upload` : "Pilih Gambar Chapter"}
       </Button>
     </Card>
   );
