@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Clock } from "lucide-react";
 import { KomikCard } from "@/components/KomikCard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DomainNotice } from "@/components/DomainNotice";
 import { TopCarousel } from "@/components/TopCarousel";
 import { AdSlotsSection } from "@/components/AdSlotsSection";
 import { WeeklyPopularCarousel } from "@/components/WeeklyPopularCarousel";
@@ -37,11 +36,8 @@ const Home = () => {
       {/* 1. Top Carousel - 4 Best Comics (Rating 9.9) */}
       <TopCarousel />
 
-      {/* 2. Ad Slots Section - 8 Vertical Slots */}
+      {/* 2. Ad Slots Section - 9 Vertical Slots */}
       <AdSlotsSection />
-
-      {/* Domain Notice */}
-      <DomainNotice />
 
       {/* 3. Weekly Popular - 10 Comics */}
       <WeeklyPopularCarousel />

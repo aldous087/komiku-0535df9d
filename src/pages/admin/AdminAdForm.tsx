@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 
@@ -24,6 +25,7 @@ const AdminAdForm = () => {
   const queryClient = useQueryClient();
   const isEdit = !!id;
   const [isActive, setIsActive] = useState(true);
+  const [selectedSlot, setSelectedSlot] = useState<string>("1");
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<AdFormData>();
 
@@ -44,6 +46,11 @@ const AdminAdForm = () => {
 
   useEffect(() => {
     if (ad) {
+      // Extract slot number from position like "home-slot-1"
+      const slotMatch = ad.position.match(/home-slot-(\d+)/);
+      if (slotMatch) {
+        setSelectedSlot(slotMatch[1]);
+      }
       setValue("position", ad.position);
       setValue("image_url", ad.image_url);
       setValue("link_url", ad.link_url || "");
@@ -53,8 +60,9 @@ const AdminAdForm = () => {
 
   const saveMutation = useMutation({
     mutationFn: async (data: AdFormData) => {
+      const position = `home-slot-${selectedSlot}`;
       const adData = {
-        position: data.position,
+        position,
         image_url: data.image_url,
         link_url: data.link_url,
         is_active: isActive,
@@ -76,6 +84,7 @@ const AdminAdForm = () => {
     onSuccess: () => {
       toast.success(isEdit ? "Iklan berhasil diupdate" : "Iklan berhasil ditambahkan");
       queryClient.invalidateQueries({ queryKey: ["admin-ads-list"] });
+      queryClient.invalidateQueries({ queryKey: ["home-ad-slots"] });
       navigate("/admin/ads");
     },
     onError: (error: any) => {
@@ -99,23 +108,35 @@ const AdminAdForm = () => {
       <Card className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
-            <Label htmlFor="position">Posisi</Label>
-            <Input
-              id="position"
-              {...register("position", { required: "Posisi harus diisi" })}
-              placeholder="home-top / detail-sidebar"
-            />
-            {errors.position && <p className="text-sm text-destructive mt-1">{errors.position.message}</p>}
+            <Label htmlFor="slot">Slot Nomor (Homepage)</Label>
+            <Select value={selectedSlot} onValueChange={setSelectedSlot}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih slot iklan" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 9 }, (_, i) => i + 1).map((num) => (
+                  <SelectItem key={num} value={num.toString()}>
+                    Slot Iklan {num}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Pilih nomor slot iklan (1-9) untuk ditampilkan di homepage
+            </p>
           </div>
 
           <div>
-            <Label htmlFor="image_url">URL Gambar</Label>
+            <Label htmlFor="image_url">URL Media Iklan</Label>
             <Input
               id="image_url"
-              {...register("image_url", { required: "URL gambar harus diisi" })}
-              placeholder="https://example.com/ad.jpg"
+              {...register("image_url", { required: "URL media harus diisi" })}
+              placeholder="https://example.com/banner.webp atau video.mp4"
             />
             {errors.image_url && <p className="text-sm text-destructive mt-1">{errors.image_url.message}</p>}
+            <p className="text-xs text-muted-foreground mt-1">
+              Mendukung: WebP animasi (1200×300), Video (MP4), atau gambar statis
+            </p>
           </div>
 
           <div>
@@ -125,6 +146,9 @@ const AdminAdForm = () => {
               {...register("link_url")}
               placeholder="https://example.com"
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Link tujuan ketika iklan diklik (opsional)
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
