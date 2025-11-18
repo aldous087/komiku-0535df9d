@@ -36,11 +36,6 @@ export const AdSlotsSection = () => {
     <div className="mb-6 px-4 space-y-4">
       {ads.map(({ slotNumber, ad }) => (
         <div key={ad.id} className="w-full">
-          <div className="mb-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Slot Iklan {slotNumber}
-            </span>
-          </div>
           {ad.link_url ? (
             <a
               href={ad.link_url}
