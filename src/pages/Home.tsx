@@ -57,20 +57,19 @@ const Home = () => {
 
   return (
     <div className="min-h-screen pb-20 bg-background">
-      {/* Top Carousel */}
-      <TopCarousel />
-
       {/* Ad Slots 1-9 */}
       <AdSlotsSection slots={[1, 2, 3, 4, 5, 6, 7, 8, 9]} />
 
       {/* Weekly Popular */}
-      <WeeklyPopularCarousel />
+      <div className="mb-[3px]">
+        <WeeklyPopularCarousel />
+      </div>
 
       {/* Special Banner */}
       <SpecialBanner />
 
       {/* Daily Updates Section */}
-      <section className="mb-8 px-4">
+      <section className="mb-6 px-4 mt-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center shadow-card">

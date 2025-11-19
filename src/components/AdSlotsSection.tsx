@@ -35,7 +35,7 @@ export const AdSlotsSection = ({ slots = [1, 2, 3, 4, 5, 6, 7, 8, 9] }: AdSlotsS
   };
 
   return (
-    <div className="mb-3 space-y-[3px]">
+    <div className="space-y-[3px]">
       {ads.map(({ slotNumber, ad }) => (
         <div key={ad.id} className="w-full">
           {ad.link_url ? (
@@ -43,31 +43,8 @@ export const AdSlotsSection = ({ slots = [1, 2, 3, 4, 5, 6, 7, 8, 9] }: AdSlotsS
               href={ad.link_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block transition-smooth hover:opacity-95"
+              className="block w-full hover:opacity-95 transition-opacity"
             >
-              <div className="w-full overflow-hidden bg-card/50">
-                {getFileType(ad.image_url) === 'video' ? (
-                  <video
-                    src={ad.image_url}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="w-full h-auto"
-                    style={{ height: '300px', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <img
-                    src={ad.image_url}
-                    alt={`Banner ${slotNumber}`}
-                    className="w-full h-auto"
-                    style={{ height: '300px', objectFit: 'cover' }}
-                  />
-                )}
-              </div>
-            </a>
-          ) : (
-            <div className="w-full overflow-hidden bg-card/50">
               {getFileType(ad.image_url) === 'video' ? (
                 <video
                   src={ad.image_url}
@@ -75,18 +52,55 @@ export const AdSlotsSection = ({ slots = [1, 2, 3, 4, 5, 6, 7, 8, 9] }: AdSlotsS
                   loop
                   muted
                   playsInline
-                  className="w-full h-auto"
-                  style={{ height: '300px', objectFit: 'cover' }}
+                  className="w-full block h-[230px] md:h-[300px] lg:h-[350px]"
+                  style={{ 
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                    display: 'block'
+                  }}
                 />
               ) : (
                 <img
                   src={ad.image_url}
                   alt={`Banner ${slotNumber}`}
-                  className="w-full h-auto"
-                  style={{ height: '300px', objectFit: 'cover' }}
+                  className="w-full block h-[230px] md:h-[300px] lg:h-[350px]"
+                  style={{ 
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                    display: 'block'
+                  }}
                 />
               )}
-            </div>
+            </a>
+          ) : (
+            <>
+              {getFileType(ad.image_url) === 'video' ? (
+                <video
+                  src={ad.image_url}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full block h-[230px] md:h-[300px] lg:h-[350px]"
+                  style={{ 
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                    display: 'block'
+                  }}
+                />
+              ) : (
+                <img
+                  src={ad.image_url}
+                  alt={`Banner ${slotNumber}`}
+                  className="w-full block h-[230px] md:h-[300px] lg:h-[350px]"
+                  style={{ 
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                    display: 'block'
+                  }}
+                />
+              )}
+            </>
           )}
         </div>
       ))}
