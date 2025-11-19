@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export const AdSlotsSection = () => {
+interface AdSlotsSectionProps {
+  slots?: number[];
+}
+
+export const AdSlotsSection = ({ slots = [1, 2, 3, 4, 5, 6, 7, 8, 9] }: AdSlotsSectionProps) => {
   const { data: ads } = useQuery({
-    queryKey: ["home-ad-slots"],
+    queryKey: ["home-ad-slots", slots],
     queryFn: async () => {
-      // Fetch all 9 slots
-      const slots = Array.from({ length: 9 }, (_, i) => i + 1);
       const promises = slots.map(async (slotNum) => {
         const { data, error } = await supabase
           .from("ads")
@@ -33,7 +35,7 @@ export const AdSlotsSection = () => {
   };
 
   return (
-    <div className="mb-6 px-4 space-y-4">
+    <div className="mb-3 space-y-[3px]">
       {ads.map(({ slotNumber, ad }) => (
         <div key={ad.id} className="w-full">
           {ad.link_url ? (
@@ -41,9 +43,9 @@ export const AdSlotsSection = () => {
               href={ad.link_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block transition-smooth hover:opacity-90"
+              className="block transition-smooth hover:opacity-95"
             >
-              <div className="w-full rounded-xl overflow-hidden shadow-card hover:shadow-glow transition-smooth bg-card/50 backdrop-blur-sm border border-border/50">
+              <div className="w-full overflow-hidden bg-card/50">
                 {getFileType(ad.image_url) === 'video' ? (
                   <video
                     src={ad.image_url}
@@ -52,20 +54,20 @@ export const AdSlotsSection = () => {
                     muted
                     playsInline
                     className="w-full h-auto"
-                    style={{ maxHeight: '300px', objectFit: 'contain' }}
+                    style={{ height: '300px', objectFit: 'cover' }}
                   />
                 ) : (
                   <img
                     src={ad.image_url}
-                    alt={`Slot Iklan ${slotNumber}`}
+                    alt={`Banner ${slotNumber}`}
                     className="w-full h-auto"
-                    style={{ maxHeight: '300px', objectFit: 'contain' }}
+                    style={{ height: '300px', objectFit: 'cover' }}
                   />
                 )}
               </div>
             </a>
           ) : (
-            <div className="w-full rounded-xl overflow-hidden shadow-card bg-card/50 backdrop-blur-sm border border-border/50">
+            <div className="w-full overflow-hidden bg-card/50">
               {getFileType(ad.image_url) === 'video' ? (
                 <video
                   src={ad.image_url}
@@ -74,14 +76,14 @@ export const AdSlotsSection = () => {
                   muted
                   playsInline
                   className="w-full h-auto"
-                  style={{ maxHeight: '300px', objectFit: 'contain' }}
+                  style={{ height: '300px', objectFit: 'cover' }}
                 />
               ) : (
                 <img
                   src={ad.image_url}
-                  alt={`Slot Iklan ${slotNumber}`}
+                  alt={`Banner ${slotNumber}`}
                   className="w-full h-auto"
-                  style={{ maxHeight: '300px', objectFit: 'contain' }}
+                  style={{ height: '300px', objectFit: 'cover' }}
                 />
               )}
             </div>
