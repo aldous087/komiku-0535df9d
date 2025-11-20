@@ -4,19 +4,58 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AdBanner } from "@/components/AdBanner";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Reader = () => {
   const { slug, chapterNumber } = useParams();
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [showNav, setShowNav] = useState(true);
+  const [isChapterSheetOpen, setIsChapterSheetOpen] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
+
+  // Auto-hide navigation on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY > lastScrollY.current) {
+        // Scrolling down - hide nav
+        setShowNav(false);
+        
+        // Clear existing timeout
+        if (scrollTimeoutRef.current) {
+          clearTimeout(scrollTimeoutRef.current);
+        }
+      }
+      
+      lastScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Show nav on tap
+  const handleTap = () => {
+    setShowNav(true);
+    
+    // Auto-hide after 3 seconds of inactivity
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      setShowNav(false);
+    }, 3000);
+  };
 
   const { data: komik } = useQuery({
     queryKey: ["komik-reader", slug],
@@ -122,57 +161,53 @@ const Reader = () => {
   }
 
   return (
-    <div className="min-h-screen pb-0 relative">
-      {/* Top Nav */}
+    <div className="min-h-screen pb-0 relative bg-background">
+      {/* Top Nav - Hidden, only back button on tap */}
       <div 
-        className={`sticky top-0 z-40 bg-card/90 backdrop-blur-lg border-b border-border transition-smooth ${
-          showNav ? "translate-y-0" : "-translate-y-full"
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          showNav ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full pointer-events-none"
         }`}
       >
-        <div className="px-4 py-3 flex items-center justify-between">
+        <div className="absolute top-4 left-4">
           <Link to={`/komik/${slug}`}>
-            <Button variant="ghost" size="icon">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="bg-black/60 backdrop-blur-md hover:bg-black/70 text-white border-0 rounded-full h-10 w-10"
+            >
               <ChevronLeft className="h-5 w-5" />
             </Button>
           </Link>
-          
-          <div className="flex-1 mx-4">
-            <h1 className="font-semibold text-sm truncate">{komik?.title}</h1>
-            <p className="text-xs text-muted-foreground">Chapter {chapterNumber}</p>
+        </div>
+        <div className="absolute top-4 right-4 left-20 text-center">
+          <div className="bg-black/60 backdrop-blur-md rounded-full px-4 py-2 inline-block">
+            <h1 className="font-semibold text-xs text-white truncate max-w-[200px]">{komik?.title}</h1>
+            <p className="text-[10px] text-white/70">Chapter {chapterNumber}</p>
           </div>
-
-          <Select
-            value={chapter?.id}
-            onValueChange={(chapterId) => {
-              const selectedChapter = allChapters?.find((c) => c.id === chapterId);
-              if (selectedChapter) {
-                navigate(`/read/${slug}/${selectedChapter.chapter_number}`);
-              }
-            }}
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {allChapters?.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  Ch. {c.chapter_number}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
-      {/* Images */}
-      <div className="space-y-0" onClick={() => setShowNav(!showNav)}>
+      {/* Images Container - Locked vertical scroll only */}
+      <div 
+        className="w-full max-w-[720px] mx-auto touch-pan-y"
+        onClick={handleTap}
+        style={{ touchAction: 'pan-y' }}
+      >
         {images?.map((img, index) => (
-          <div key={img.id}>
+          <div key={img.id} className="w-full">
             <img
               src={img.image_url}
               alt={`Page ${index + 1}`}
-              className="w-full h-auto"
+              className="w-full h-auto block"
+              style={{
+                objectFit: 'contain',
+                maxWidth: '100%',
+                touchAction: 'pan-y',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+              }}
               loading="lazy"
+              draggable={false}
             />
             {index === Math.floor(images.length / 2) && (
               <AdBanner position="reader" />
@@ -181,39 +216,89 @@ const Reader = () => {
         ))}
       </div>
 
-      {/* Bottom Nav */}
-      <div className="sticky bottom-0 left-0 right-0 bg-card/90 backdrop-blur-lg border-t border-border py-4 px-4">
-        <div className="flex items-center justify-between max-w-screen-xl mx-auto gap-4">
+      {/* Bottom Navigation - Floating transparent */}
+      <div 
+        className={`fixed bottom-4 left-4 right-4 z-50 transition-all duration-300 ${
+          showNav ? "opacity-100 translate-y-0" : "opacity-0 translate-y-20 pointer-events-none"
+        }`}
+      >
+        <div className="flex items-center justify-center gap-2 max-w-[600px] mx-auto">
           {prevChapter ? (
             <Link to={`/read/${slug}/${prevChapter.chapter_number}`} className="flex-1">
-              <Button variant="outline" className="w-full gap-2">
+              <Button 
+                variant="outline" 
+                className="w-full gap-2 bg-black/70 backdrop-blur-md hover:bg-black/80 text-white border-white/20 rounded-xl h-12"
+              >
                 <ChevronLeft className="h-4 w-4" />
                 Prev
               </Button>
             </Link>
           ) : (
-            <Button variant="outline" disabled className="flex-1">
+            <Button 
+              variant="outline" 
+              disabled 
+              className="flex-1 gap-2 bg-black/50 backdrop-blur-md text-white/50 border-white/10 rounded-xl h-12"
+            >
               <ChevronLeft className="h-4 w-4" />
               Prev
             </Button>
           )}
 
-          <Link to={`/komik/${slug}`} className="flex-1">
-            <Button variant="secondary" className="w-full gap-2">
-              <Menu className="h-4 w-4" />
-              Chapters
-            </Button>
-          </Link>
+          <Sheet open={isChapterSheetOpen} onOpenChange={setIsChapterSheetOpen}>
+            <SheetTrigger asChild>
+              <Button 
+                variant="secondary" 
+                className="flex-1 gap-2 bg-primary/90 backdrop-blur-md hover:bg-primary text-primary-foreground border-0 rounded-xl h-12 font-semibold"
+              >
+                <Menu className="h-4 w-4" />
+                Chapters
+              </Button>
+            </SheetTrigger>
+            <SheetContent 
+              side="bottom" 
+              className="h-[70vh] bg-card/95 backdrop-blur-xl border-t border-border rounded-t-3xl"
+            >
+              <SheetHeader>
+                <SheetTitle className="text-center">
+                  {komik?.title}
+                </SheetTitle>
+              </SheetHeader>
+              <ScrollArea className="h-[calc(70vh-80px)] mt-4">
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-2 p-4">
+                  {allChapters?.map((c) => (
+                    <Button
+                      key={c.id}
+                      variant={c.id === chapter?.id ? "default" : "outline"}
+                      className="h-12 rounded-lg"
+                      onClick={() => {
+                        navigate(`/read/${slug}/${c.chapter_number}`);
+                        setIsChapterSheetOpen(false);
+                      }}
+                    >
+                      {c.chapter_number}
+                    </Button>
+                  ))}
+                </div>
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
 
           {nextChapter ? (
             <Link to={`/read/${slug}/${nextChapter.chapter_number}`} className="flex-1">
-              <Button variant="outline" className="w-full gap-2">
+              <Button 
+                variant="outline" 
+                className="w-full gap-2 bg-black/70 backdrop-blur-md hover:bg-black/80 text-white border-white/20 rounded-xl h-12"
+              >
                 Next
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </Link>
           ) : (
-            <Button variant="outline" disabled className="flex-1">
+            <Button 
+              variant="outline" 
+              disabled 
+              className="flex-1 gap-2 bg-black/50 backdrop-blur-md text-white/50 border-white/10 rounded-xl h-12"
+            >
               Next
               <ChevronRight className="h-4 w-4" />
             </Button>
