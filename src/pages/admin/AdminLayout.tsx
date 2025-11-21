@@ -1,76 +1,20 @@
-import { useEffect, useState } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
 import { Home, BookOpen, FileText, Image, MessageSquare, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAdminGuard } from "@/hooks/useAdminGuard";
 
 const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        navigate("/auth");
-      } else {
-        setUser(data.user);
-      }
-    });
-  }, [navigate]);
-
-  const { data: isAdmin, isLoading } = useQuery({
-    queryKey: ["admin-check", user?.id],
-    queryFn: async () => {
-      if (!user) return false;
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-      return !!data;
-    },
-    enabled: !!user,
-  });
-
-  const { data: has2FA, isLoading: loading2FA } = useQuery({
-    queryKey: ["admin-2fa-check", user?.id],
-    queryFn: async () => {
-      if (!user) return false;
-      const { data, error } = await supabase.rpc("has_valid_2fa_session", {
-        check_user_id: user.id,
-      });
-      if (error) {
-        console.error("Error checking 2FA:", error);
-        return false;
-      }
-      return data;
-    },
-    enabled: !!user && isAdmin === true,
-  });
-
-  useEffect(() => {
-    if (!isLoading && isAdmin === false) {
-      toast.error("Akses ditolak. Anda bukan admin.");
-      navigate("/");
-    }
-  }, [isAdmin, isLoading, navigate]);
-
-  useEffect(() => {
-    if (!loading2FA && isAdmin === true && has2FA === false) {
-      toast.error("Sesi 2FA tidak valid. Silakan login ulang.");
-      navigate("/auth");
-    }
-  }, [has2FA, loading2FA, isAdmin, navigate]);
+  const { user, isAdmin, isLoading } = useAdminGuard();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast.success("Berhasil logout");
-    navigate("/", { replace: true });
+    navigate("/admin-login", { replace: true });
   };
 
   const navItems = [
@@ -81,9 +25,9 @@ const AdminLayout = () => {
     { to: "/admin/comments", icon: MessageSquare, label: "Komentar" },
   ];
 
-  if (isLoading || loading2FA || !isAdmin || !has2FA) {
+  if (isLoading || !isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );

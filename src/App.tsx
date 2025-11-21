@@ -23,6 +23,7 @@ import AdminAds from "./pages/admin/AdminAds";
 import AdminAdForm from "./pages/admin/AdminAdForm";
 import AdminComments from "./pages/admin/AdminComments";
 import VerifyOTP from "./pages/admin/VerifyOTP";
+import AdminLogin from "./pages/AdminLogin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,9 @@ const App = () => (
         <Routes>
           {/* Auth Route (no nav bars) */}
           <Route path="/auth" element={<Auth />} />
+          
+          {/* Admin Login (no nav bars) */}
+          <Route path="/admin-login" element={<AdminLogin />} />
           
           {/* Admin OTP Verification (no nav bars) */}
           <Route path="/admin/verify-otp" element={<VerifyOTP />} />
