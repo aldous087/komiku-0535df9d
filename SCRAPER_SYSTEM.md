@@ -65,7 +65,38 @@ Sistem scraper otomatis untuk KomikRu yang menggunakan **Smart Mirroring** denga
 
 ### Edge Functions (Supabase Functions)
 
-#### 1. `scrape-comic` - Scraper Halaman Chapter
+#### 1. `fetch-comic-list` - Auto Import Full Catalog
+**Path:** `supabase/functions/fetch-comic-list/index.ts`
+
+**Input:**
+```json
+{
+  "sourceCode": "ALL" | "MANHWALIST" | "SHINIGAMI" | "KOMIKCAST",
+  "maxPages": 10
+}
+```
+
+**Proses:**
+1. Loop setiap source yang aktif
+2. Scrape listing page dari source (pagination support)
+3. Extract: title, cover, genres, status, source_url
+4. Upsert ke tabel `komik` (update if exists)
+5. Log ke `scrape_logs`
+
+**Output:**
+```json
+{
+  "success": true,
+  "totalComics": 250,
+  "errors": []
+}
+```
+
+**Rate Limiting:** 2 detik delay antar request
+
+---
+
+#### 2. `scrape-comic` - Scraper Halaman Chapter
 **Path:** `supabase/functions/scrape-comic/index.ts`
 
 **Input:**
@@ -100,7 +131,7 @@ Sistem scraper otomatis untuk KomikRu yang menggunakan **Smart Mirroring** denga
 
 ---
 
-#### 2. `sync-comic` - Sync Komik dari Source
+#### 3. `sync-comic` - Sync Komik dari Source
 **Path:** `supabase/functions/sync-comic/index.ts`
 
 **Input:**
@@ -144,8 +175,9 @@ Interface TypeScript untuk scraper system
 
 ## 🎨 Admin Panel Integration
 
-### Halaman Baru: Admin Sources
-**Path:** `/admin/sources`
+### Admin Panel Pages
+
+#### Admin Sources (`/admin/sources`)
 **Component:** `src/pages/admin/AdminSources.tsx`
 
 **Fitur:**
@@ -157,15 +189,55 @@ Interface TypeScript untuk scraper system
    - Tombol "Sync Komik Sekarang"
    - Akan fetch detail + chapters dan simpan ke database
 
+---
+
+#### Admin Catalog (`/admin/catalog`) 🆕
+**Component:** `src/pages/admin/AdminCatalog.tsx`
+
+**Fitur:**
+1. **Stats Dashboard:**
+   - Total komik di database
+   - Status scraper (ready/fetching)
+   - Waktu sync terakhir
+
+2. **Fetch All Comics:**
+   - Tombol untuk scrape seluruh catalog dari semua source
+   - Proses otomatis dengan pagination
+   - Import ratusan komik sekaligus
+
+3. **Refresh Data:**
+   - Update metadata komik existing
+   - Tidak menghapus data yang sudah ada
+
+4. **Scraping Logs Viewer:**
+   - Real-time log aktivitas scraping
+   - Filter by source, action, status
+   - Error tracking
+
 **Navigasi:**
-- Ditambahkan ke sidebar admin dengan icon RefreshCw
-- Menu: Dashboard | Komik | Chapters | Iklan | Komentar | **Scraper**
+- Sidebar admin: Dashboard | Komik | Chapters | Iklan | Komentar | Scraper | **Catalog**
+- Icon: Download
 
 ---
 
-## 📖 Alur Kerja User
+## 📖 Alur Kerja
 
-### Skenario 1: User Membuka Chapter
+### Skenario 1: Admin Import Full Catalog 🆕
+```
+1. Admin buka /admin/catalog
+2. Klik "Fetch All Comics (10 Pages)"
+3. Backend:
+   - Loop ke Manhwalist, Shinigami, KomikCast
+   - Scrape listing page (pagination)
+   - Extract metadata komik
+   - Upsert ke database
+4. Homepage otomatis menampilkan semua komik baru
+5. Total waktu: 5-10 menit untuk ~200-300 komik
+```
+
+---
+
+### Skenario 2: User Membuka Chapter
 ```
 1. User klik chapter di KomikRu
 2. Frontend load `/read/{slug}/{chapterNumber}`
@@ -184,7 +256,7 @@ Interface TypeScript untuk scraper system
 
 ---
 
-### Skenario 2: Admin Sync Komik Baru
+### Skenario 3: Admin Sync Komik Spesifik (Manual)
 
 ```
 1. Admin buka /admin/sources
