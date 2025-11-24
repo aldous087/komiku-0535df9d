@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { isAdminEmail } from "@/config/adminEmails";
 import { toast } from "sonner";
 
 export const useAdminGuard = () => {
@@ -18,16 +17,22 @@ export const useAdminGuard = () => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       
       if (!currentUser) {
-        navigate("/admin-login", { replace: true });
+        navigate("/auth", { replace: true });
         setIsLoading(false);
         return;
       }
 
-      // Check if email is in whitelist
-      if (!isAdminEmail(currentUser.email)) {
-        toast.error("Akses ditolak. Email ini tidak memiliki izin admin.");
-        await supabase.auth.signOut();
-        navigate("/admin-login", { replace: true });
+      // Check if user has admin role in database
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", currentUser.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (!roleData) {
+        toast.error("Akses ditolak. Anda tidak memiliki izin admin.");
+        navigate("/", { replace: true });
         setIsLoading(false);
         return;
       }
@@ -45,12 +50,19 @@ export const useAdminGuard = () => {
         if (event === "SIGNED_OUT" || !session) {
           setUser(null);
           setIsAdmin(false);
-          navigate("/admin-login", { replace: true });
+          navigate("/auth", { replace: true });
         } else if (event === "SIGNED_IN" && session?.user) {
-          if (!isAdminEmail(session.user.email)) {
-            toast.error("Akses ditolak. Email ini tidak memiliki izin admin.");
-            await supabase.auth.signOut();
-            navigate("/admin-login", { replace: true });
+          // Check admin role
+          const { data: roleData } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", session.user.id)
+            .eq("role", "admin")
+            .maybeSingle();
+
+          if (!roleData) {
+            toast.error("Akses ditolak. Anda tidak memiliki izin admin.");
+            navigate("/", { replace: true });
           } else {
             setUser(session.user);
             setIsAdmin(true);

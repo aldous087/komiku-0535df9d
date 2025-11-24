@@ -13,6 +13,7 @@ import Search from "./pages/Search";
 import Bookmarks from "./pages/Bookmarks";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminKomik from "./pages/admin/AdminKomik";
@@ -37,8 +38,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Auth Route (no nav bars) */}
+          {/* Auth Routes (no nav bars) */}
           <Route path="/auth" element={<Auth />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           
           {/* Admin Login (no nav bars) */}
           <Route path="/admin-login" element={<AdminLogin />} />
