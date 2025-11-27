@@ -50,7 +50,13 @@ async function scrapeComicDetail(sourceCode: string, url: string) {
     comic.coverUrl = $('.thumb img, .series-thumb img').first().attr('src');
     comic.description = $('.entry-content p, .series-synops').first().text().trim();
     comic.status = $('.series-status').text().includes('Ongoing') ? 'Ongoing' : 'Completed';
+    comic.type = 'manga'; // Default, could be parsed from page
     comic.genres = $('.series-genres a').map((_, el) => $(el).text().trim()).get();
+    
+    // Try to parse rating
+    const ratingText = $('.rating-prc, .rating').first().text().trim();
+    const ratingMatch = ratingText.match(/(\d+\.?\d*)/);
+    comic.rating = ratingMatch ? parseFloat(ratingMatch[1]) : null;
 
     $('.chapter-list li a, .eplister li a').each((_, el) => {
       const $el = $(el);
@@ -70,7 +76,12 @@ async function scrapeComicDetail(sourceCode: string, url: string) {
     comic.coverUrl = $('.thumb img, .series-thumb img').first().attr('src');
     comic.description = $('.entry-content, .series-synops').first().text().trim();
     comic.status = $('.status').text().includes('Ongoing') ? 'Ongoing' : 'Completed';
+    comic.type = 'manga'; // Default
     comic.genres = $('.genxed a').map((_, el) => $(el).text().trim()).get();
+    
+    const ratingText = $('.rating-prc, .rating').first().text().trim();
+    const ratingMatch = ratingText.match(/(\d+\.?\d*)/);
+    comic.rating = ratingMatch ? parseFloat(ratingMatch[1]) : null;
 
     $('.eplister li a, #chapterlist li a').each((_, el) => {
       const $el = $(el);
@@ -90,7 +101,12 @@ async function scrapeComicDetail(sourceCode: string, url: string) {
     comic.coverUrl = $('.komik_info-content-thumbnail img').first().attr('src');
     comic.description = $('.komik_info-description-sinopsis').first().text().trim();
     comic.status = $('.komik_info-content-info-status').text().includes('Ongoing') ? 'Ongoing' : 'Completed';
+    comic.type = 'manga'; // Default
     comic.genres = $('.komik_info-content-genre a').map((_, el) => $(el).text().trim()).get();
+    
+    const ratingText = $('.data-rating, .rating').first().text().trim();
+    const ratingMatch = ratingText.match(/(\d+\.?\d*)/);
+    comic.rating = ratingMatch ? parseFloat(ratingMatch[1]) : null;
 
     $('.komik_info-chapters-item a').each((_, el) => {
       const $el = $(el);
@@ -153,6 +169,8 @@ Deno.serve(async (req) => {
           description: comic.description,
           cover_url: comic.coverUrl,
           status: comic.status,
+          type: comic.type || 'manga',
+          rating: comic.rating,
           genres: comic.genres,
           source_id: source.id,
           source_slug: sourceSlug,
@@ -171,6 +189,8 @@ Deno.serve(async (req) => {
           description: comic.description,
           cover_url: comic.coverUrl,
           status: comic.status,
+          type: comic.type || 'manga',
+          rating: comic.rating,
           genres: comic.genres,
           source_id: source.id,
           source_slug: sourceSlug,
