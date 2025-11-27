@@ -88,50 +88,42 @@ const Reader = () => {
     enabled: !!komik?.id,
   });
 
-  const { data: images } = useQuery({
-    queryKey: ["chapter-images", chapter?.id],
+  const { data: images, isLoading: imagesLoading } = useQuery({
+    queryKey: ["chapter-cache", chapter?.id],
     queryFn: async () => {
       if (!chapter?.id) return [];
 
-      // First check chapter_pages (new scraper system)
-      const { data: pages } = await supabase
-        .from("chapter_pages")
-        .select("*")
-        .eq("chapter_id", chapter.id)
-        .order("page_number");
+      // Call cache-chapter function to get or create cache
+      const { data: cacheData, error: cacheError } = await supabase.functions.invoke("cache-chapter", {
+        body: { chapterId: chapter.id },
+      });
 
-      if (pages && pages.length > 0) {
-        // If cache is old (>24h), trigger scraping in background
-        const cacheAge = pages[0].cached_at 
-          ? Date.now() - new Date(pages[0].cached_at).getTime()
-          : Infinity;
-        
-        if (cacheAge >= 24 * 60 * 60 * 1000) {
-          // Trigger background scraping (don't await)
-          supabase.functions.invoke("scrape-comic", {
-            body: { chapterId: chapter.id }
-          }).catch(console.error);
-        }
+      if (cacheError) {
+        console.error('Cache error:', cacheError);
+        // Fallback to old chapter_images
+        const { data, error } = await supabase
+          .from("chapter_images")
+          .select("*")
+          .eq("chapter_id", chapter.id)
+          .order("order_index", { ascending: true });
 
-        // Return existing pages
-        return pages.map(p => ({
-          id: p.id,
-          image_url: p.source_image_url,
-          order_index: p.page_number,
+        if (error) throw error;
+        return (data || []).map(img => ({
+          id: img.id,
+          image_url: img.image_url,
+          order_index: img.order_index,
         }));
       }
 
-      // Fallback to old chapter_images
-      const { data, error } = await supabase
-        .from("chapter_images")
-        .select("*")
-        .eq("chapter_id", chapter.id)
-        .order("order_index", { ascending: true });
-
-      if (error) throw error;
-      return data || [];
+      // Return cached pages
+      return cacheData.pages.map((p: any) => ({
+        id: `${chapter.id}-${p.pageNumber}`,
+        image_url: p.imageUrl,
+        order_index: p.pageNumber,
+      }));
     },
     enabled: !!chapter?.id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const { data: allChapters } = useQuery({
@@ -180,11 +172,16 @@ const Reader = () => {
     ? allChapters?.[currentChapterIndex + 1] 
     : null;
 
-  if (isLoading) {
+  if (isLoading || imagesLoading) {
     return (
-      <div className="min-h-screen">
-        <div className="space-y-4">
-          {Array.from({ length: 10 }).map((_, i) => (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8">
+        <div className="space-y-4 w-full max-w-2xl">
+          <div className="text-center space-y-2">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="text-sm text-muted-foreground">Loading chapter images...</p>
+            <p className="text-xs text-muted-foreground/70">This may take a moment for first-time loading</p>
+          </div>
+          {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="w-full aspect-[3/4]" />
           ))}
         </div>

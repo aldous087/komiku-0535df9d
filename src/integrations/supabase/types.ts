@@ -198,6 +198,7 @@ export type Database = {
           cached_image_url: string | null
           chapter_id: string
           created_at: string | null
+          expires_at: string | null
           id: string
           page_number: number
           source_image_url: string
@@ -207,6 +208,7 @@ export type Database = {
           cached_image_url?: string | null
           chapter_id: string
           created_at?: string | null
+          expires_at?: string | null
           id?: string
           page_number: number
           source_image_url: string
@@ -216,6 +218,7 @@ export type Database = {
           cached_image_url?: string | null
           chapter_id?: string
           created_at?: string | null
+          expires_at?: string | null
           id?: string
           page_number?: number
           source_image_url?: string
@@ -328,6 +331,7 @@ export type Database = {
           is_color: boolean | null
           origin_country: string | null
           popularity_score: number | null
+          rating: number | null
           rating_admin: number | null
           slug: string
           source_id: string | null
@@ -335,6 +339,7 @@ export type Database = {
           source_url: string | null
           status: string | null
           title: string
+          type: string | null
           updated_at: string | null
           view_count: number | null
           views_today: number | null
@@ -354,6 +359,7 @@ export type Database = {
           is_color?: boolean | null
           origin_country?: string | null
           popularity_score?: number | null
+          rating?: number | null
           rating_admin?: number | null
           slug: string
           source_id?: string | null
@@ -361,6 +367,7 @@ export type Database = {
           source_url?: string | null
           status?: string | null
           title: string
+          type?: string | null
           updated_at?: string | null
           view_count?: number | null
           views_today?: number | null
@@ -380,6 +387,7 @@ export type Database = {
           is_color?: boolean | null
           origin_country?: string | null
           popularity_score?: number | null
+          rating?: number | null
           rating_admin?: number | null
           slug?: string
           source_id?: string | null
@@ -387,6 +395,7 @@ export type Database = {
           source_url?: string | null
           status?: string | null
           title?: string
+          type?: string | null
           updated_at?: string | null
           view_count?: number | null
           views_today?: number | null

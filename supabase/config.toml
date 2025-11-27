@@ -1,1 +1,28 @@
 project_id = "vmeooasvptndyifwggoi"
+
+[functions.cache-chapter]
+verify_jwt = false
+
+[functions.cleanup-cache]
+verify_jwt = false
+
+[functions.fetch-comic-list]
+verify_jwt = false
+
+[functions.sanitize-comment]
+verify_jwt = false
+
+[functions.scrape-comic]
+verify_jwt = false
+
+[functions.secure-upload-chapter]
+verify_jwt = false
+
+[functions.secure-upload-cover]
+verify_jwt = false
+
+[functions.send-admin-otp]
+verify_jwt = false
+
+[functions.sync-comic]
+verify_jwt = false
