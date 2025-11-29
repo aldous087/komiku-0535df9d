@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { S3Client, PutObjectCommand } from "https://esm.sh/@aws-sdk/client-s3@3";
-import * as cheerio from "https://esm.sh/cheerio@1.0.0-rc.12";
+import { scrapeChapterPages } from '../_shared/scraperAdaptersV2.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,97 +20,6 @@ const r2Client = new S3Client({
 
 const R2_BUCKET = Deno.env.get('R2_BUCKET_NAME') || 'komikru';
 const R2_PUBLIC_URL = Deno.env.get('R2_PUBLIC_URL') || '';
-
-// Rate limiting
-const lastRequestTime: Map<string, number> = new Map();
-const MIN_DELAY_MS = 2000;
-
-async function safeFetch(url: string): Promise<string> {
-  const hostname = new URL(url).hostname;
-  const lastTime = lastRequestTime.get(hostname) || 0;
-  const now = Date.now();
-  const timeSinceLastRequest = now - lastTime;
-
-  if (timeSinceLastRequest < MIN_DELAY_MS) {
-    await new Promise(resolve => setTimeout(resolve, MIN_DELAY_MS - timeSinceLastRequest));
-  }
-
-  lastRequestTime.set(hostname, Date.now());
-
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': Deno.env.get('SCRAPER_USER_AGENT') || 'Mozilla/5.0',
-      'Accept': 'text/html,application/xhtml+xml',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-  }
-
-  return await response.text();
-}
-
-function extractChapterNumber(text: string): number {
-  const patterns = [
-    /chapter[\s-]*(\d+(?:\.\d+)?)/i,
-    /ch[\s-]*(\d+(?:\.\d+)?)/i,
-    /ep[\s-]*(\d+(?:\.\d+)?)/i,
-    /episode[\s-]*(\d+(?:\.\d+)?)/i,
-    /#(\d+(?:\.\d+)?)/,
-    /(\d+(?:\.\d+)?)/,
-  ];
-
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match && match[1]) {
-      return parseFloat(match[1]);
-    }
-  }
-
-  return 0;
-}
-
-async function scrapeChapterPages(sourceCode: string, url: string): Promise<{ pageNumber: number; imageUrl: string }[]> {
-  const html = await safeFetch(url);
-  const $ = cheerio.load(html);
-  const pages: { pageNumber: number; imageUrl: string }[] = [];
-
-  if (sourceCode === 'MANHWALIST') {
-    $('#readerarea img').each((i, el) => {
-      const src = $(el).attr('src');
-      if (src && !src.includes('loading')) {
-        pages.push({
-          pageNumber: i + 1,
-          imageUrl: src.trim(),
-        });
-      }
-    });
-  } else if (sourceCode === 'SHINIGAMI') {
-    $('.chapter-images img').each((i, el) => {
-      const src = $(el).attr('src') || $(el).attr('data-src');
-      if (src && !src.includes('loading')) {
-        pages.push({
-          pageNumber: i + 1,
-          imageUrl: src.trim(),
-        });
-      }
-    });
-  } else if (sourceCode === 'KOMIKCAST') {
-    $('#chapter_body img').each((i, el) => {
-      const src = $(el).attr('src');
-      if (src && !src.includes('loader')) {
-        pages.push({
-          pageNumber: i + 1,
-          imageUrl: src.trim(),
-        });
-      }
-    });
-  }
-
-  return pages;
-}
 
 async function uploadImageToR2(
   imageUrl: string,
