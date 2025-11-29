@@ -1,129 +1,30 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import * as cheerio from 'https://esm.sh/cheerio@1.0.0-rc.12';
+import { scrapeComicDetail } from '../_shared/scraperAdaptersV2.ts';
+import { slugify } from '../_shared/httpClient.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const lastRequestTime: Record<string, number> = {};
-const MIN_DELAY_MS = 2000;
-
-async function safeFetch(url: string): Promise<string> {
-  const hostname = new URL(url).hostname;
-  const now = Date.now();
-  const lastTime = lastRequestTime[hostname] || 0;
-  const timeSinceLastRequest = now - lastTime;
+async function processComicData(sourceCode: string, url: string) {
+  console.log(`Processing comic from ${sourceCode}: ${url}`);
   
-  if (timeSinceLastRequest < MIN_DELAY_MS) {
-    await new Promise(resolve => setTimeout(resolve, MIN_DELAY_MS - timeSinceLastRequest));
-  }
+  const comicData = await scrapeComicDetail(sourceCode, url);
   
-  lastRequestTime[hostname] = Date.now();
-  
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8',
+  return {
+    comic: {
+      title: comicData.title,
+      coverUrl: comicData.coverUrl,
+      description: comicData.description,
+      status: comicData.status,
+      type: comicData.type,
+      rating: comicData.rating,
+      genres: comicData.genres,
+      sourceUrl: url,
     },
-  });
-
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return await response.text();
-}
-
-function extractChapterNumber(text: string): number {
-  const match = text.match(/(\d+\.?\d*)/);
-  return match ? parseFloat(match[1]) : 0;
-}
-
-async function scrapeComicDetail(sourceCode: string, url: string) {
-  const html = await safeFetch(url);
-  const $ = cheerio.load(html);
-  
-  let comic: any = { sourceUrl: url };
-  let chapters: any[] = [];
-
-  if (sourceCode === 'MANHWALIST') {
-    comic.title = $('.entry-title, h1.title').first().text().trim();
-    comic.coverUrl = $('.thumb img, .series-thumb img').first().attr('src');
-    comic.description = $('.entry-content p, .series-synops').first().text().trim();
-    comic.status = $('.series-status').text().includes('Ongoing') ? 'Ongoing' : 'Completed';
-    comic.type = 'manga'; // Default, could be parsed from page
-    comic.genres = $('.series-genres a').map((_, el) => $(el).text().trim()).get();
-    
-    // Try to parse rating
-    const ratingText = $('.rating-prc, .rating').first().text().trim();
-    const ratingMatch = ratingText.match(/(\d+\.?\d*)/);
-    comic.rating = ratingMatch ? parseFloat(ratingMatch[1]) : null;
-
-    $('.chapter-list li a, .eplister li a').each((_, el) => {
-      const $el = $(el);
-      const href = $el.attr('href');
-      const title = $el.text().trim();
-      if (href) {
-        chapters.push({
-          sourceUrl: href,
-          sourceChapterId: href.split('/').filter(Boolean).pop() || '',
-          chapterNumber: extractChapterNumber(title),
-          title: title,
-        });
-      }
-    });
-  } else if (sourceCode === 'SHINIGAMI') {
-    comic.title = $('.entry-title, h1').first().text().trim();
-    comic.coverUrl = $('.thumb img, .series-thumb img').first().attr('src');
-    comic.description = $('.entry-content, .series-synops').first().text().trim();
-    comic.status = $('.status').text().includes('Ongoing') ? 'Ongoing' : 'Completed';
-    comic.type = 'manga'; // Default
-    comic.genres = $('.genxed a').map((_, el) => $(el).text().trim()).get();
-    
-    const ratingText = $('.rating-prc, .rating').first().text().trim();
-    const ratingMatch = ratingText.match(/(\d+\.?\d*)/);
-    comic.rating = ratingMatch ? parseFloat(ratingMatch[1]) : null;
-
-    $('.eplister li a, #chapterlist li a').each((_, el) => {
-      const $el = $(el);
-      const href = $el.attr('href');
-      const title = $el.find('.chapternum').text() || $el.text();
-      if (href) {
-        chapters.push({
-          sourceUrl: href,
-          sourceChapterId: href.split('/').filter(Boolean).pop() || '',
-          chapterNumber: extractChapterNumber(title),
-          title: title.trim(),
-        });
-      }
-    });
-  } else if (sourceCode === 'KOMIKCAST') {
-    comic.title = $('.komik_info-content-body-title, h1').first().text().trim();
-    comic.coverUrl = $('.komik_info-content-thumbnail img').first().attr('src');
-    comic.description = $('.komik_info-description-sinopsis').first().text().trim();
-    comic.status = $('.komik_info-content-info-status').text().includes('Ongoing') ? 'Ongoing' : 'Completed';
-    comic.type = 'manga'; // Default
-    comic.genres = $('.komik_info-content-genre a').map((_, el) => $(el).text().trim()).get();
-    
-    const ratingText = $('.data-rating, .rating').first().text().trim();
-    const ratingMatch = ratingText.match(/(\d+\.?\d*)/);
-    comic.rating = ratingMatch ? parseFloat(ratingMatch[1]) : null;
-
-    $('.komik_info-chapters-item a').each((_, el) => {
-      const $el = $(el);
-      const href = $el.attr('href');
-      const title = $el.text().trim();
-      if (href) {
-        chapters.push({
-          sourceUrl: href,
-          sourceChapterId: href.split('/').filter(Boolean).pop() || '',
-          chapterNumber: extractChapterNumber(title),
-          title: title,
-        });
-      }
-    });
-  }
-
-  return { comic, chapters };
+    chapters: comicData.chapters,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -154,7 +55,7 @@ Deno.serve(async (req) => {
     if (!source) throw new Error('Source not found');
 
     // Scrape comic data
-    const { comic, chapters } = await scrapeComicDetail(sourceCode, sourceUrl);
+    const { comic, chapters } = await processComicData(sourceCode, sourceUrl);
     
     const sourceSlug = sourceUrl.split('/').filter(Boolean).pop() || '';
 
@@ -180,7 +81,7 @@ Deno.serve(async (req) => {
         .eq('id', komikId);
     } else {
       // Create new
-      const slug = comic.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const slug = slugify(comic.title);
       const { data: newKomik } = await supabase
         .from('komik')
         .insert({

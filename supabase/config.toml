@@ -3,7 +3,13 @@ project_id = "vmeooasvptndyifwggoi"
 [functions.cache-chapter]
 verify_jwt = false
 
+[functions.cache-chapter-r2]
+verify_jwt = false
+
 [functions.cleanup-cache]
+verify_jwt = false
+
+[functions.cleanup-cache-r2]
 verify_jwt = false
 
 [functions.fetch-comic-list]
@@ -13,6 +19,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.scrape-comic]
+verify_jwt = false
+
+[functions.scrape-universal]
 verify_jwt = false
 
 [functions.secure-upload-chapter]
