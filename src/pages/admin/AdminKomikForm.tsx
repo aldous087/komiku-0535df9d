@@ -11,8 +11,18 @@ import { ComicPreviewCard } from "@/components/admin/ComicPreviewCard";
 import { FlagUpload } from "@/components/FlagUpload";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import type { TablesInsert } from "@/integrations/supabase/types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -31,7 +41,10 @@ const AdminKomikForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [comicTitle, setComicTitle] = useState<string>("");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -65,6 +78,7 @@ const AdminKomikForm = () => {
 
       if (error) throw error;
 
+      setComicTitle(komik.title);
       form.setValue("title", komik.title);
       form.setValue("slug", komik.slug);
       form.setValue("description", komik.description || "");
@@ -149,6 +163,29 @@ const AdminKomikForm = () => {
     }
   };
 
+  const handleDeleteComic = async () => {
+    if (!id) return;
+
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-comic', {
+        body: { comic_id: id },
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || 'Failed to delete comic');
+
+      toast.success("Komik berhasil dihapus beserta semua chapter");
+      navigate("/admin/komik");
+    } catch (error) {
+      console.error("Error deleting comic:", error);
+      toast.error(error instanceof Error ? error.message : "Gagal menghapus komik");
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -191,12 +228,56 @@ const AdminKomikForm = () => {
               </div>
             </div>
           </div>
-          <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => navigate("/admin/komik")}>Cancel</Button>
-            <Button type="submit" disabled={loading}>{loading ? "Saving..." : id ? "Update" : "Create"}</Button>
+          <div className="flex justify-between gap-4">
+            <div>
+              {id && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  disabled={loading || deleting}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deleting ? "Menghapus..." : "Delete Comic"}
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-4">
+              <Button type="button" variant="outline" onClick={() => navigate("/admin/komik")}>Cancel</Button>
+              <Button type="submit" disabled={loading}>{loading ? "Saving..." : id ? "Update" : "Create"}</Button>
+            </div>
           </div>
         </form>
       </Form>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Komik?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Yakin ingin menghapus komik <strong>{comicTitle}</strong>?
+              </p>
+              <p className="text-destructive font-semibold">
+                ⚠️ Semua chapter, gambar, dan data terkait akan dihapus permanen.
+              </p>
+              <p>
+                Aksi ini tidak dapat dikembalikan.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteComic}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Menghapus..." : "Hapus Komik"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
