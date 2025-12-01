@@ -7,23 +7,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Initialize R2 client
-const r2Client = new S3Client({
-  region: "auto",
-  endpoint: `https://${Deno.env.get("R2_ACCOUNT_ID")}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: Deno.env.get("R2_ACCESS_KEY_ID") || "",
-    secretAccessKey: Deno.env.get("R2_SECRET_ACCESS_KEY") || "",
-  },
-});
+// Initialize R2 client with explicit credential provider
+const getR2Client = () => {
+  const accountId = Deno.env.get("R2_ACCOUNT_ID");
+  const accessKeyId = Deno.env.get("R2_ACCESS_KEY_ID");
+  const secretAccessKey = Deno.env.get("R2_SECRET_ACCESS_KEY");
+
+  if (!accountId || !accessKeyId || !secretAccessKey) {
+    throw new Error("Missing R2 credentials in environment");
+  }
+
+  return new S3Client({
+    region: "auto",
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+    // Disable credential chain to prevent file system access
+    credentialDefaultProvider: () => async () => ({
+      accessKeyId,
+      secretAccessKey,
+    }),
+  });
+};
 
 const R2_BUCKET = Deno.env.get("R2_BUCKET_NAME") || "";
 
-async function deleteFromR2(filePath: string): Promise<void> {
+async function deleteFromR2(client: S3Client, bucket: string, filePath: string): Promise<void> {
   try {
-    await r2Client.send(
+    await client.send(
       new DeleteObjectCommand({
-        Bucket: R2_BUCKET,
+        Bucket: bucket,
         Key: filePath,
       })
     );
@@ -33,18 +48,18 @@ async function deleteFromR2(filePath: string): Promise<void> {
   }
 }
 
-async function deleteChapterFilesFromR2(comicId: string, chapterNumber: number): Promise<number> {
+async function deleteChapterFilesFromR2(client: S3Client, bucket: string, comicId: string, chapterNumber: number): Promise<number> {
   try {
     const prefix = `comics/${comicId}/chapters/${chapterNumber}/`;
     console.log(`Deleting files with prefix: ${prefix}`);
 
     // List all objects with prefix
     const listCommand = new ListObjectsV2Command({
-      Bucket: R2_BUCKET,
+      Bucket: bucket,
       Prefix: prefix,
     });
 
-    const listResult = await r2Client.send(listCommand);
+    const listResult = await client.send(listCommand);
 
     if (!listResult.Contents || listResult.Contents.length === 0) {
       console.log("No files found to delete");
@@ -56,7 +71,7 @@ async function deleteChapterFilesFromR2(comicId: string, chapterNumber: number):
     // Delete all objects
     const deletePromises = listResult.Contents.map(obj => {
       if (obj.Key) {
-        return deleteFromR2(obj.Key);
+        return deleteFromR2(client, bucket, obj.Key);
       }
     });
 
@@ -147,7 +162,9 @@ serve(async (req) => {
     // Delete files from R2
     let deletedFiles = 0;
     try {
-      deletedFiles = await deleteChapterFilesFromR2(comic_id, chapter_number);
+      const r2Client = getR2Client();
+      const R2_BUCKET = Deno.env.get("R2_BUCKET_NAME") || "";
+      deletedFiles = await deleteChapterFilesFromR2(r2Client, R2_BUCKET, comic_id, chapter_number);
       console.log(`Deleted ${deletedFiles} files from R2`);
     } catch (r2Error) {
       console.error('R2 deletion error (continuing with DB deletion):', r2Error);
