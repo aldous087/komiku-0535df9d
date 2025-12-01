@@ -68,18 +68,18 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    // Rate limiting: 10 comments per hour per user
+    // Rate limiting: 30 comments per hour per user
     const rateLimitIdentifier = user.id;
     const { data: canProceed } = await supabase.rpc('check_rate_limit', {
       _identifier: rateLimitIdentifier,
       _action: 'post_comment',
-      _max_requests: 10,
+      _max_requests: 30,
       _window_minutes: 60
     });
 
     if (!canProceed) {
       return new Response(
-        JSON.stringify({ error: 'Rate limit exceeded. Max 10 comments per hour.' }),
+        JSON.stringify({ error: 'Rate limit exceeded. Max 30 comments per hour.' }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
