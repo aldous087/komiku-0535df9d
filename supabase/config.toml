@@ -35,3 +35,12 @@ verify_jwt = false
 
 [functions.sync-comic]
 verify_jwt = false
+
+[functions.upload-cbz]
+verify_jwt = false
+
+[functions.delete-comic]
+verify_jwt = false
+
+[functions.delete-chapter]
+verify_jwt = false
