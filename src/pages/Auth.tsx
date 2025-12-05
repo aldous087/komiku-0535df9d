@@ -44,9 +44,24 @@ const Auth = () => {
       if (error) {
         if (error.message.includes("Invalid login credentials")) {
           toast.error("Email atau password salah");
+        } else if (error.message.includes("Email not confirmed")) {
+          // User hasn't verified email - redirect to verify page
+          localStorage.setItem("pending_verification_email", validated.email);
+          toast.error("Email belum diverifikasi. Silakan cek email Anda.");
+          navigate(`/verify?email=${encodeURIComponent(validated.email)}`);
+          return;
         } else {
           toast.error(error.message);
         }
+        return;
+      }
+
+      // Double-check email verification status
+      if (!data.user.email_confirmed_at) {
+        await supabase.auth.signOut();
+        localStorage.setItem("pending_verification_email", validated.email);
+        toast.error("Akun Anda belum terverifikasi. Silakan cek email Anda.");
+        navigate(`/verify?email=${encodeURIComponent(validated.email)}`);
         return;
       }
 
@@ -81,6 +96,7 @@ const Auth = () => {
       } else {
         // Regular user - login directly
         toast.success("Berhasil login!");
+        navigate("/");
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -95,12 +111,25 @@ const Auth = () => {
     try {
       setLoading(true);
       const validated = authSchema.parse({ email, password });
+
+      // Check rate limit via edge function
+      const { error: rateLimitError } = await supabase.functions.invoke("check-registration-limit", {
+        body: { email: validated.email },
+      });
+
+      if (rateLimitError) {
+        const errorData = JSON.parse(rateLimitError.message || "{}");
+        if (errorData.code === "RATE_LIMITED") {
+          toast.error("Terlalu banyak percobaan. Tunggu beberapa saat dan coba lagi.");
+          return;
+        }
+      }
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: validated.email,
         password: validated.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}/verify/success`,
         },
       });
 
@@ -110,9 +139,23 @@ const Auth = () => {
         } else {
           toast.error(error.message);
         }
-      } else {
-        toast.success("Berhasil daftar! Silakan login.");
+        return;
       }
+
+      // Log registration event
+      await supabase.functions.invoke("log-verification-event", {
+        body: {
+          userId: data.user?.id,
+          email: validated.email,
+          event: "registered",
+        },
+      }).catch(console.error);
+
+      // Store email for verify page
+      localStorage.setItem("pending_verification_email", validated.email);
+      
+      toast.success("Berhasil daftar! Silakan cek email Anda untuk verifikasi.");
+      navigate(`/verify?email=${encodeURIComponent(validated.email)}`);
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);

@@ -14,6 +14,8 @@ import Bookmarks from "./pages/Bookmarks";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
+import VerifyEmail from "./pages/VerifyEmail";
+import VerifyEmailSuccess from "./pages/VerifyEmailSuccess";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminKomik from "./pages/admin/AdminKomik";
@@ -43,6 +45,8 @@ const App = () => (
           {/* Auth Routes (no nav bars) */}
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/verify" element={<VerifyEmail />} />
+          <Route path="/verify/success" element={<VerifyEmailSuccess />} />
           
           {/* Admin Login (no nav bars) */}
           <Route path="/admin-login" element={<AdminLogin />} />
