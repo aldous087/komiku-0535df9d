@@ -131,6 +131,30 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_rate_limit: {
+        Row: {
+          action: string
+          created_at: string | null
+          email: string | null
+          id: string
+          ip_address: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          ip_address?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          ip_address?: string | null
+        }
+        Relationships: []
+      }
       bookmarks: {
         Row: {
           created_at: string | null
@@ -599,12 +623,52 @@ export type Database = {
         }
         Relationships: []
       }
+      verification_logs: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          event: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          event: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          event?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       calculate_popularity_scores: { Args: never; Returns: undefined }
+      check_auth_rate_limit: {
+        Args: {
+          _action: string
+          _email: string
+          _ip_address: string
+          _max_requests: number
+          _window_hours: number
+        }
+        Returns: boolean
+      }
       check_rate_limit: {
         Args: {
           _action: string
@@ -614,6 +678,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      cleanup_auth_data: { Args: never; Returns: Json }
       generate_admin_otp: { Args: { admin_email: string }; Returns: string }
       has_role: {
         Args: {
@@ -635,6 +700,20 @@ export type Database = {
           _resource_id?: string
           _resource_type: string
           _user_agent?: string
+          _user_id: string
+        }
+        Returns: string
+      }
+      log_auth_rate_limit: {
+        Args: { _action: string; _email: string; _ip_address: string }
+        Returns: undefined
+      }
+      log_verification_event: {
+        Args: {
+          _email: string
+          _event: string
+          _ip_address?: string
+          _metadata?: Json
           _user_id: string
         }
         Returns: string

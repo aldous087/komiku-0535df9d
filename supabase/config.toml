@@ -51,3 +51,15 @@ verify_jwt = true
 
 [functions.sync-comic]
 verify_jwt = true
+
+[functions.resend-verification]
+verify_jwt = false
+
+[functions.log-verification-event]
+verify_jwt = false
+
+[functions.check-registration-limit]
+verify_jwt = false
+
+[functions.cleanup-unverified]
+verify_jwt = true
